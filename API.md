@@ -32,7 +32,7 @@ Reference rates from 2026-05-07 unless dated otherwise. The Console shows your a
 | AI Search | `POST /desearch/ai/search` | 0.40 / 1000 items | |
 | Web Search (SERP) | `GET /web` | 1.00 / 1000 searches | metered as 0.10 / 100 |
 | Extract | `GET /web/extract` | 0.50 / 1000 pages | **measured** 0.0005 per page with `js=false` |
-| X Search | `GET /twitter` and other `/twitter/*` | 0.15 / 1000 posts | docs 2026-11-19: minimum 10 posts per search, empty result included; our earlier measurements found no minimum — see [X-SEARCH.md](X-SEARCH.md) |
+| X Search | `GET /twitter` and other `/twitter/*` | 0.15 / 1000 posts | `GET /twitter`: minimum 10 posts (0.0015) per search, **empty result included** (docs 2026-11-19, **measured** 2026-11-25); details in [X-SEARCH.md](X-SEARCH.md) |
 | X profiles | | 0.15 / 1000 users | |
 | X Profile Search | `POST /desearch/people/search/x` | 25.00 / 1000 profiles | per qualified profile delivered |
 | YouTube Creator Search | `POST /desearch/people/search/youtube` | 10.00 / 1000 creators | per result delivered |

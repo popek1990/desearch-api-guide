@@ -11,24 +11,24 @@ Labels used below:
 - **Server test:** calls with `curl` from our own server, with a direct key.
 - `untested`: needs a key and was not tested yet.
 
-## Docs (2026-11-19) vs our measurements — needs a re-test
+## Changes confirmed on 2026-11-25 (these apply now)
 
-The current X docs (`llms-full.txt` reviewed 2026-11-19 and the pricing FAQ, read 2026-11-25) describe billing and
-queries differently from our measurements of 2026-11-10 and 2026-11-12. We do not know yet whether billing changed or
-only the description. Until a new test: read the real cost from `X-Desearch-Cost-Usd` and budget for the worse case.
+The X docs reviewed on 2026-11-19 described billing and queries differently from our measurements of 2026-11-10 and
+2026-11-12. **Our test on 2026-11-25** (`curl`, 7 calls on the @desearch_ai account, 0.01425 USD from the cost headers)
+confirmed the docs: Desearch changed billing after 2026-11-12. Older measurements below are history; where they differ,
+this table wins.
 
-| Topic | Our measurement | Docs 2026-11-19 | If the docs are right |
-|---|---|---|---|
-| `GET /twitter`, minimum | no minimum, you pay only for posts returned (2026-11-10, 2026-11-12) | minimum 10 posts per successful search | a query with 1–9 posts costs like 10 (0.0015 USD) |
-| `GET /twitter`, empty result | 0 USD (2026-10-30, 2026-11-01, 2026-11-12) | the 10-post minimum applies to an empty result too; only failed searches are free | every empty poll costs 0.0015 USD; frequent `since_id` polling is no longer free |
-| `/twitter/user/posts` page | 15–21 posts; empty page 0.0015 USD (2026-11-10) | 10-post minimum, up to 60 posts per page; an empty page is free | the last page of a timeline is free, fewer pages per account |
-| `OR` without brackets plus dates | dates applied only to the last term (2026-11-12) | filters apply to every `OR` term; the query is wrapped in brackets | bug fixed; keep the brackets anyway, they cost nothing |
-| `start_date` / `end_date` | day precision, day borders not clean UTC (2026-11-10, 2026-11-12) | `YYYY-MM-DD` (whole UTC day) or ISO 8601 date-time with a time zone, both inclusive; any other value or a `cursor` = 422, not charged | narrow hour windows by parameter instead of `since:` with hours |
-| `/twitter/replies` | for an active account only posts from 1–3 years ago (2026-11-02) | replies newest first, `count` 1–100 (default 10), `query`, next page via the `x-desearch-next-cursor` header | may now work for an account's current replies |
+| Topic | Before (measured) | Test 2026-11-25 (applies now) |
+|---|---|---|
+| `GET /twitter`, empty result | 0 USD (2026-10-30, 2026-11-01, 2026-11-12) | **0.0015 USD** (`usage 10`), HTTP 200. Every empty poll is billed as 10 posts; frequent `since_id` polling is no longer free |
+| `GET /twitter`, few results | no minimum, 1 post = 0.00015 USD | **minimum 10 posts**: 1 post = 0.0015 USD; 18 posts = 0.0027 USD (above 10 you pay per post) |
+| `OR` without brackets plus dates | dates applied only to the last term (2026-11-12) | **fixed**: `"Desearch" OR $TAO` with dates and `("Desearch" OR $TAO)` both returned the same 18 posts, all inside the window. Keep brackets anyway, they cost nothing |
+| `start_date` / `end_date` | day precision only | **ISO 8601 date-time works**: `2026-11-24T12:00:00Z` … `2026-11-24T14:00:00Z` returned the only post, from 13:01. Docs: both ends inclusive; a bad format or a `cursor` = 422, not charged |
+| `/twitter/user/posts` page | 15–21 posts at 0.00015 USD each | unchanged: 19 posts for 0.00285 USD; no cursor in the headers. Docs say up to 60 posts per page and a free empty page: empty page `untested` |
+| `/twitter/replies` | for an active account only posts from 1–3 years ago (2026-11-02) | **works for current replies**: 10 replies from 2026-10-16 … 2026-11-19, newest first, next page via `x-desearch-next-cursor`, 0.0015 USD |
 
-Planned test (direct key, `curl`, under 0.05 USD): empty `GET /twitter` and a query returning 1–3 posts with
-`count=10`; the last page of `/twitter/user/posts`; `"A" OR $T` with dates and no brackets; `start_date` with an ISO
-8601 time; `/twitter/replies` for an active account.
+What it means: every `GET /twitter` call now costs at least 0.0015 USD, even with zero results. A "posts × 0.00015"
+estimate undercounts small and empty queries. Always read the real cost from `X-Desearch-Cost-Usd`.
 
 ## Endpoints we use and what we learned
 
@@ -45,7 +45,7 @@ Planned test (direct key, `curl`, under 0.05 USD): empty `GET /twitter` and a qu
 - **Time operators** (list from the docs; server test 2026-11-01: `since_id` and `since:` with seconds work, the given second is included; `since_time` only a negative test; the rest `untested`): `since_id:<id>` (after this post, excluding it), `max_id:<id>`, `since_time:<unix>`, `until_time:<unix>`, `since:YYYY-MM-DD_HH:MM:SS_UTC`, `within_time:5m`. `since:YYYY-MM-DD` and the `start_date`/`end_date` parameters work to the day. A time operator must go with another operator. Max ~22–23 operators per query.
 - **`max_id:`** works and is inclusive: the post with that id is in the result (influencer-tracker test).
 - **`end_date` is inclusive, and day borders are not clean UTC:** `start_date` = `end_date` = D also returns the early hours of D+1 (influencer-tracker test). The end of the window also depends on the query (server test 2026-11-12, window 5–11 Nov, one sample): a cashtag alone reached ~05:46 UTC of D+1, while a name alone stopped ~23:00 UTC of D and missed posts from 23:06–23:44 that another query returned. Set `end_date` one day later, filter by `created_at` yourself and do not assume the last hours of a day are covered.
-- **Always put `OR` in brackets when you use dates: `("name" OR $TICKER)`.** (Docs 2026-11-19 say the API now wraps the query in brackets itself — see the table at the top; keep the brackets anyway.) Without brackets the `start_date`/`end_date` window applies only to the last term; the first comes without any date limit, with no warning (server test 2026-11-12, 8 calls, 0.012 USD): `"A" OR $T` with dates gave the same IDs as `"A"` without dates, `$T OR "A"` with dates the same as `$T` without dates; only brackets gave posts from the window. Most likely the API appends dates as an AND condition that binds tighter than `OR` (probable; not documented).
+- **Always put `OR` in brackets when you use dates: `("name" OR $TICKER)`.** (Fixed by Desearch — confirmed 2026-11-25, see the table at the top; the text below describes the state on 2026-11-12. Keep the brackets anyway.) Without brackets the `start_date`/`end_date` window applies only to the last term; the first comes without any date limit, with no warning (server test 2026-11-12, 8 calls, 0.012 USD): `"A" OR $T` with dates gave the same IDs as `"A"` without dates, `$T OR "A"` with dates the same as `$T` without dates; only brackets gave posts from the window. Most likely the API appends dates as an AND condition that binds tighter than `OR` (probable; not documented).
 - **`from:<account>` vs `/twitter/user/posts`:** `from:` search returned mostly replies (69–93 % of results) and no reposts; `user/posts` returned mostly posts and reposts, ~780 newest. Neither alone gives the full history of an account (influencer-tracker test).
 - **`entities.symbols` (cashtags recognised by X) is incomplete:** filled in 73 % and 98 % of posts with a cashtag in the text (2 accounts, influencer-tracker test). Detect cashtags from the text yourself.
 - **Reposts:** search skips reposts by default; `include:nativeretweets` works ~7–10 days back. The `retweet` object exists only in `/twitter/user/posts`.
@@ -58,8 +58,8 @@ Planned test (direct key, `curl`, under 0.05 USD): empty `GET /twitter` and a qu
 
 ## What you are really billed
 
-- `GET /twitter` (measured; docs 2026-11-19 say otherwise — see the table at the top): you pay for unique posts returned, **no minimum of 10**, at most `count` (influencer-tracker test: `count=10` and 1 post returned = 0.00015 USD, 9 posts = 0.00135 USD; `count=100` and 100 posts = 0.015 USD; confirmed by server test 2026-11-12: `count=10` and 2 posts = 0.0003 USD, 20 posts = 0.003 USD, empty result 0 USD). The X API docs (read 2026-11-12) confirm there is no minimum; the general pricing page still says minimum 10. When they disagree, trust the endpoint's own docs and the cost header.
-- `GET /twitter/user/posts` (measured; docs 2026-11-19: an empty page is free — see the table at the top): **an empty page costs 0.0015 USD** (like 10 posts; influencer-tracker test, last page of the timeline); a page with 11 posts 0.00165 USD. An empty `GET /twitter` costs 0 USD.
+- `GET /twitter` (**outdated since the 2026-11-25 test**: minimum 10 posts, empty result included — see the table at the top; below is the state up to 2026-11-12): you pay for unique posts returned, **no minimum of 10**, at most `count` (influencer-tracker test: `count=10` and 1 post returned = 0.00015 USD, 9 posts = 0.00135 USD; `count=100` and 100 posts = 0.015 USD; confirmed by server test 2026-11-12: `count=10` and 2 posts = 0.0003 USD, 20 posts = 0.003 USD, empty result 0 USD). The X API docs (read 2026-11-12) confirm there is no minimum; the general pricing page still says minimum 10. When they disagree, trust the endpoint's own docs and the cost header.
+- `GET /twitter/user/posts` (measured 2026-11-10; docs 2026-11-19 say an empty page is free, `untested`): **an empty page costs 0.0015 USD** (like 10 posts; influencer-tracker test, last page of the timeline); a page with 11 posts 0.00165 USD. An empty `GET /twitter` cost 0 USD up to 2026-11-12 and 0.0015 USD since the 2026-11-25 test.
 - `/twitter/replies`, `/twitter/replies/post`: minimum 10 posts when anything is returned, never more than `count`. Empty result free (X API docs, read 2026-11-12; not tested). Do not apply this minimum to other X endpoints.
 - Free, among others: 503 errors on X endpoints.
 - Errors and cost (influencer-tracker test): 422 (e.g. a wrong `sort` value) comes **without a cost header**; 404 from `/twitter/post` (post not found) has `X-Desearch-Cost-Usd: 0`.
@@ -72,8 +72,8 @@ Planned test (direct key, `curl`, under 0.05 USD): empty `GET /twitter` and a qu
 - Search that returned 10 posts: 0.0015 USD (2026-10-28). A client may ask for more posts than it shows; you pay for what the API returns, not what you display.
 - First full research run: 13 calls, 452 unique posts, 0.0726 USD. Every post found earlier through FxTwitter was also in the Desearch results.
 - Forum test 2026-10-28: `/web` 0.001 USD per query, `/web/extract` 0.0005 USD per page.
-- Server test 2026-11-01: `/twitter/user/posts` returns 20 posts for 0.003 USD. Polling `GET /twitter` with `since_id` every minute for 30 minutes with no new posts: 0 USD.
-- Server test 2026-10-30: `GET /twitter` with no results costs 0 USD (`X-Desearch-Cost-Usd` header), a query with 12 posts 0.0018 USD — empty queries do not eat the budget.
+- Server test 2026-11-01: `/twitter/user/posts` returns 20 posts for 0.003 USD. Polling `GET /twitter` with `since_id` every minute for 30 minutes with no new posts: 0 USD (outdated since 2026-11-25: each empty poll is 0.0015 USD, so 30 minutes at one per minute is ~0.045 USD).
+- Server test 2026-10-30: `GET /twitter` with no results costs 0 USD (`X-Desearch-Cost-Usd` header), a query with 12 posts 0.0018 USD — empty queries did not eat the budget then (outdated since 2026-11-25).
 - Influencer-tracker test: the whole `/twitter/user/posts` timeline of one active account (~785 posts, 42–44 pages) ~0.12 USD; `GET /twitter` in date windows 0.15 USD per 1000 returned posts.
 
 A normal research run costs cents. The real cost is X history of authors in deep research: 5 USD is ~33,000 posts for

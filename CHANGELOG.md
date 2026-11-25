@@ -5,6 +5,9 @@ the Desearch docs and the OpenAPI spec read on 2026-11-25. These are announcemen
 
 ## 2026-11
 
+- **11-25** Our test confirmed the 2026-11-19 docs: an empty `GET /twitter` now costs 0.0015 USD (10-post
+  minimum), unbracketed `OR` with dates is fixed, ISO 8601 date-times work, `/twitter/replies` returns current replies.
+  See [X-SEARCH.md](X-SEARCH.md).
 - **11-25** SN22 publishes its service map on-chain: one URL pointing to OpenAPI, MCP, docs and payment guidance
   (https://www.desearch.ai/services.json).
 - **11-24** Go SDK `desearch-go` v0.1.0, generated from a pinned OpenAPI snapshot (92 operations).
