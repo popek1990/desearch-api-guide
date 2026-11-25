@@ -10,7 +10,7 @@ As of: 2026-11-25.
 | Use case | Endpoints | How |
 |---|---|---|
 | **Due-diligence reports on crypto projects** | `GET /twitter`, `/twitter/user/posts`, `/web`, `/web/extract` | who writes about the project on X and when, cashtag history of those authors, forum threads (`site:bitcointalk.org`), clean text of docs and blogs. Our main, permanent source of X data. A normal report costs cents. |
-| **Alerts on new X posts for watched coins** | `GET /twitter` | every few minutes one query per coin (`$TICKER`, `"name"`, `from:<official account>`) with `sort=Latest`, `count=20` and `since_id:<last seen>`. Empty answers are free, so you pay only for new posts. A free source (FxTwitter) is the fallback when Desearch is down or over budget. |
+| **Alerts on new X posts for watched coins** | `GET /twitter` | every few minutes one query per coin (`$TICKER`, `"name"`, `from:<official account>`) with `sort=Latest`, `count=20` and `since_id:<last seen>`. Empty answers were free in our tests, so you paid only for new posts (the 2026-11-19 docs say an empty search is billed as 10 posts — re-test before relying on it, see [X-SEARCH.md](X-SEARCH.md)). A free source (FxTwitter) is the fallback when Desearch is down or over budget. |
 | **Track record of crypto influencers ("callers")** | `/twitter/user/posts`, `GET /twitter` with `from:` and date windows | collect an account's history, detect cashtags locally, then check prices after 24 h / 7 / 30 / 90 days. Neither endpoint alone gives the full history. |
 | **Exchange listing announcements** | `/web/extract`, `/twitter/user/posts` | read an exchange's announcements page as markdown (`js=false`) where plain `curl` gets a Cloudflare 403, and the newest posts of the exchange's official X account. |
 

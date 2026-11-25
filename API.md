@@ -32,7 +32,7 @@ Reference rates from 2026-05-07 unless dated otherwise. The Console shows your a
 | AI Search | `POST /desearch/ai/search` | 0.40 / 1000 items | |
 | Web Search (SERP) | `GET /web` | 1.00 / 1000 searches | metered as 0.10 / 100 |
 | Extract | `GET /web/extract` | 0.50 / 1000 pages | **measured** 0.0005 per page with `js=false` |
-| X Search | `GET /twitter` and other `/twitter/*` | 0.15 / 1000 posts | billing details and measurements: [X-SEARCH.md](X-SEARCH.md) |
+| X Search | `GET /twitter` and other `/twitter/*` | 0.15 / 1000 posts | docs 2026-11-19: minimum 10 posts per search, empty result included; our earlier measurements found no minimum — see [X-SEARCH.md](X-SEARCH.md) |
 | X profiles | | 0.15 / 1000 users | |
 | X Profile Search | `POST /desearch/people/search/x` | 25.00 / 1000 profiles | per qualified profile delivered |
 | YouTube Creator Search | `POST /desearch/people/search/youtube` | 10.00 / 1000 creators | per result delivered |
@@ -50,7 +50,7 @@ Reference rates from 2026-05-07 unless dated otherwise. The Console shows your a
 
 | Endpoint | What it does |
 |---|---|
-| `POST /search` | ranked web pages from the Desearch index, each with the passage that best matches; page text for ordinary queries; publish-date window (start and end date); `summary: true` adds a short answer with numbered `citations` (`index`, `url`, `title`) at no extra charge; modes fast / balanced |
+| `POST /search` | ranked web pages from the Desearch index, each with the passage that best matches. Body: `query`, `mode` (`fast` / `balanced`, default balanced), `count` (default 10, max 20), `start_date` / `end_date` (publish date), `highlights` (default true), `page_text` (full page text, **default false**), `summary` (short answer with numbered `citations` — `index`, `url`, `title` — at no extra charge, default false), `include_domains`, `exclude_domains` |
 
 Quick start:
 
@@ -73,22 +73,22 @@ curl -X POST 'https://api.desearch.ai/search' \
 | Endpoint | What it does |
 |---|---|
 | `GET /web` | SERP-style results (`title`, `snippet`, `link`, `highlights`, `text`); `query` and `start` (0–100), up to 20 results per call |
-| `GET /web/extract` | clean text, markdown or HTML of a URL; optional JS rendering; a URL without `https://` is accepted; an unfetchable URL now returns a plain "invalid URL" answer |
+| `GET /web/extract` | clean page content of a URL. Params: `format` (`text` default, `markdown`, `html`), `js` (default `false`), `wait`, `full_page`; a URL without `https://` is accepted; an unfetchable URL returns a plain "invalid URL" answer |
 | `GET /web/crawl` | deprecated alias of Extract |
 
 ### 4. X (Twitter) Search
 
 | Endpoint | What it does |
 |---|---|
-| `GET /twitter` | post search with X operators (`from:`, `$cashtag`, `since_id:`, `min_faves:`, `lang:` …); `count` 1–100; sort Top or Latest; no cursor |
-| `GET /twitter/user/posts` | an account's timeline with `cursor` paging (~780 newest posts, **measured**) |
-| `GET /twitter/post/user` | search posts by user |
+| `GET /twitter` | post search with X operators (`from:`, `$cashtag`, `since_id:`, `min_faves:`, `lang:` …) and parameters `user`, `start_date` / `end_date` (day or ISO 8601 date-time), `lang`, `verified`, `blue_verified`, `is_quote`, `is_video`, `is_image`, `min_retweets`, `min_replies`, `min_likes`; `count` 1–100 (default 20); sort Top or Latest; no cursor |
+| `GET /twitter/user/posts` | an account's timeline with `cursor` paging (~780 newest posts, **measured**); docs: up to 60 posts per page |
+| `GET /twitter/post/user` | search one account's posts, ranked by relevance, not time |
 | `GET /twitter/post` | one post by ID |
-| `GET /twitter/urls` | posts by URLs |
-| `GET /twitter/post/retweeters` | who reposted a post |
-| `GET /twitter/replies` | an account's tweets and replies |
-| `GET /twitter/replies/post` | replies to a post |
-| `GET /twitter/trends` | trending topics for a place by WOEID (`woeid`, `count`) |
+| `GET /twitter/urls` | posts by URLs; each post billed once, unreadable URLs left out and free |
+| `GET /twitter/post/retweeters` | who reposted a post (`cursor` paging) |
+| `GET /twitter/replies` | an account's tweets and replies, newest first; `count` 1–100, `query`, `cursor` |
+| `GET /twitter/replies/post` | replies to a post, newest first; `count` 1–100, `query`, `cursor` |
+| `GET /twitter/trends` | trending topics for a place by WOEID (`woeid`, `count` default 30) |
 
 X results include the post card (since 2026-11). Behaviour, pitfalls and real costs: [X-SEARCH.md](X-SEARCH.md).
 

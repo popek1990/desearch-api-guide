@@ -11,6 +11,10 @@ the Desearch docs and the OpenAPI spec read on 2026-11-25. These are announcemen
 - **11-21** MCP adds cost and usage metadata to every billed tool result, including list and text outputs.
 - **11-20** Semantic Kernel connector (`desearch-semantic-kernel`).
 - **11-19** AI Search: pick sources with `tools` (`web`, `twitter`); a `warnings` array reports an empty or failed source.
+- **11-19** Docs review of X search: `GET /twitter` billed with a minimum of 10 posts per successful search, empty
+  result included; `/twitter/user/posts` up to 60 posts per page, empty page free; `OR` terms wrapped in brackets so
+  filters apply to each; `start_date` / `end_date` accept ISO 8601 date-times; replies endpoints page with
+  `x-desearch-next-cursor`. Several of these contradict our earlier measurements — see [X-SEARCH.md](X-SEARCH.md).
 - **11-18** New `POST /search` price: 0.30 per 1000 results, at least 10 billed (0.003 per default search), empty = free,
   summary free. Monitors pricing published.
 - **11-17** Company Search guide: 45 USD / 1000 companies, minimum 1 company per task.
